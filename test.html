@@ -1,0 +1,226 @@
+<html>
+
+<body style="background-color: #505050">
+    <h1>Gravitation zwischen 2 Objekten mit unterschiedlichen Massen</h1>
+    <p style="font-size: 1.5rem">Legende:
+        <br><span style="width: 2rem; height: 1rem; background-color: red; display:inline-block;"></span> ...Kraft
+        <br><span style="width: 2rem; height: 1rem; background-color: green; display:inline-block;"></span> ...Geschwindigkeit
+        <br><span style="width: 1rem; height: 1rem; border-radius: 50%; border-style: solid; border-width: 2px; background-color: lightgrey; display:inline-block;"></span><span style="width: 1rem; display: inline-block"></span> ...Objekt mit Masse = 10^13
+        <br><span style="width: 2rem; height: 2rem; border-radius: 50%; border-style: solid; border-width: 2px; background-color: lightskyblue; display:inline-block;"></span> ...Objekt mit Masse = 10^15
+    </p>
+    <div id="limiter">
+        <div class="gravObj" id="gravityObj1" style="background-color: skyblue"></div>
+        <div class="forceIndicator" id="forceInd1"></div>
+        <div class="velocityIndicator" id="velInd1"></div>
+        <div class="gravObj" id="gravityObj2" style="background-color: lightgrey;"></div>
+        <div class="forceIndicator" id="forceInd2"></div>
+        <div class="velocityIndicator" id="velInd2"></div>
+        </div>
+</body>
+<script>
+    let obj1 = document.getElementById("gravityObj1");
+    let obj2 = document.getElementById("gravityObj2");
+
+    let f1 = document.getElementById("forceInd1");
+    let f2 = document.getElementById("forceInd2");
+
+    let v1 = document.getElementById("velInd1");
+    let v2 = document.getElementById("velInd2");
+
+    let fps = 25
+
+    obj1.style.top = "400px";
+    obj1.style.left = "800px";
+
+    obj2.style.top = "400px";
+    obj2.style.left = "30px";
+
+    class Vector2 {
+        x;
+        y;
+
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        add(vector2) {
+            this.x += vector2.x;
+            this.y += vector2.y;
+            return this;
+        }
+
+        sub(vector2) {
+            this.x -= vector2.x;
+            this.y -= vector2.y;
+            return this;
+        }
+
+        scalarDivide(scalar) {
+            this.x /= scalar;
+            this.y /= scalar;
+            return this;
+        }
+
+        scalarMultiply(scalar) {
+            this.x *= scalar;
+            this.y *= scalar;
+            return this;
+        }
+
+        copy() {
+            return new Vector2(this.x, this.y);
+        }
+
+        length_squared() {
+            return Math.pow(this.x, 2) + Math.pow(this.y, 2);
+        }
+
+        length() {
+            return Math.sqrt(this.length_squared());
+        }
+
+        normalize() {
+            let length = Math.sqrt(this.length_squared());
+            return new Vector2(this.x / length, this.y / length);
+        }
+
+        angle() {
+            let angle = Math.atan(this.y / this.x) / Math.PI * 180;
+            angle += this.x < 0 ? 180 : 0;
+            return angle;
+        }
+    }
+
+    const G = 6.674 * Math.pow(10, 1);
+
+    let gravObj1 = { mass: 1000, element: obj1, velocity: new Vector2(0, 0), forceIndicator: f1, force: new Vector2(0, 0), radius: 50, velocityIndicator: v1 };
+    let gravObj2 = { mass: 10, element: obj2, velocity: new Vector2(0, 5), forceIndicator: f2, force: new Vector2(0, 0), radius: 25, velocityIndicator: v2 };
+
+    gravObj1.element.style.height = gravObj1.radius * 2 + "px";
+    gravObj1.element.style.width = gravObj1.radius * 2 + "px";
+    gravObj2.element.style.height = gravObj2.radius * 2 + "px";
+    gravObj2.element.style.width = gravObj2.radius * 2 + "px";
+
+    function calculateGravity() {
+        let style1 = gravObj1.element.style;
+        let style2 = gravObj2.element.style;
+        let pos1 = new Vector2(parseFloat(style1.left) + gravObj1.radius, parseFloat(style1.top) + gravObj1.radius);
+        let pos2 = new Vector2(parseFloat(style2.left) + gravObj2.radius, parseFloat(style2.top) + gravObj2.radius);
+        let force = gravity(gravObj1.mass, gravObj2.mass, pos2.copy().sub(pos1).length_squared());
+        let diff = pos2.copy().sub(pos1).normalize();
+        return new Vector2(diff.x * force, diff.y * force);
+    }
+
+    function gravity(mass1, mass2, distance_squared) {
+        return distance_squared != 0 ? G * mass1 * mass2 / distance_squared : 0;
+    }
+
+    function applyGravity() {
+        let gravity = calculateGravity();
+        gravObj1.force.add(gravity);
+        gravObj2.force.add(gravity.copy().scalarMultiply(-1));
+        scale(gravObj1.forceIndicator, clamp(gravObj1.force.length() * 5, 5, 100), clamp(gravObj1.force.length(), 5, 20));
+        scale(gravObj2.forceIndicator, clamp(gravObj2.force.length() * 5, 5, 100), clamp(gravObj2.force.length(), 5, 20));
+        scale(gravObj1.velocityIndicator, clamp(gravObj1.velocity.length() * 5, 0, 100), clamp(gravObj1.velocity.length(), 0, 20))
+        scale(gravObj2.velocityIndicator, clamp(gravObj2.velocity.length() * 5, 0, 100), clamp(gravObj2.velocity.length(), 0, 20))
+        let forceAngle1 = gravObj1.force.angle();
+        let forceAngle2 = gravObj2.force.angle();
+        rotate(gravObj1.forceIndicator, forceAngle1);
+        rotate(gravObj2.forceIndicator, forceAngle2);
+        placeInCenter(gravObj1.forceIndicator, gravObj1.element, gravObj1.radius, forceAngle1);
+        placeInCenter(gravObj2.forceIndicator, gravObj2.element, gravObj2.radius, forceAngle2);
+        
+        let velAngle1 = gravObj1.velocity.angle();
+        let velAngle2 = gravObj2.velocity.angle();
+        rotate(gravObj1.velocityIndicator, velAngle1);
+        rotate(gravObj2.velocityIndicator, velAngle2);
+        placeInCenter(gravObj1.velocityIndicator, gravObj1.element, gravObj1.radius, velAngle1);
+        placeInCenter(gravObj2.velocityIndicator, gravObj2.element, gravObj2.radius, velAngle2);
+        outOfBounds(gravObj1);
+        outOfBounds(gravObj2);
+        applyForces(gravObj1);
+        applyForces(gravObj2);
+    }
+
+    function scale(element, width, height) {
+        element.style.width = width + "px";
+        element.style.height = height + "px";
+    }
+
+    function placeInCenter(child, parent, radius, angle) {
+        let sin = Math.sin(angle / 180 * Math.PI);
+        let cos = Math.cos(angle / 180 * Math.PI);
+        child.style.top = parseFloat(parent.style.top) + radius + (parseFloat(child.style.height) / 2) * sin + "px";
+        child.style.left = parseFloat(parent.style.left) + radius + (parseFloat(child.style.height) / 2) * cos + "px";
+    }
+
+    function rotate(element, deg) {
+        element.style.webkitTransform = 'rotate(' + deg + 'deg)';
+        element.style.mozTransform = 'rotate(' + deg + 'deg)';
+        element.style.msTransform = 'rotate(' + deg + 'deg)';
+        element.style.oTransform = 'rotate(' + deg + 'deg)';
+        element.style.transform = 'rotate(' + deg + 'deg)';
+    }
+
+    function applyForces(gravObj) {
+        gravObj.velocity.add(gravObj.force.scalarDivide(gravObj.mass));
+        gravObj.force = new Vector2(0, 0);
+        moveRelativeXY(gravObj.element, gravObj.velocity.x, gravObj.velocity.y);
+    }
+
+    function moveRelativeXY(obj, x, y) {
+        obj.style.top = (parseFloat(obj.style.top) + y) + "px";
+        obj.style.left = (parseFloat(obj.style.left) + x) + "px";
+    }
+
+    function clamp(val, min, max) {
+        return Math.min(Math.max(min, val), max);
+    }
+
+    function outOfBounds(gravObj) {
+        let boundsMargin = 20;
+        if (parseFloat(gravObj.element.style.top) <= boundsMargin || parseFloat(gravObj.element.style.top) >= window.innerHeight - gravObj.radius * 2 - boundsMargin) {
+            gravObj.force.add((new Vector2(0, -gravObj.velocity.y)).normalize().scalarMultiply(50));
+            gravObj.velocity.y = 0;
+        }
+        if (parseFloat(gravObj.element.style.left) <= boundsMargin || parseFloat(gravObj.element.style.left) >= window.innerWidth - gravObj.radius * 2 - boundsMargin) {
+            gravObj.force.add((new Vector2(-gravObj.velocity.x, 0)).normalize().scalarMultiply(50));
+            gravObj.velocity.x = 0;
+        }
+    }
+
+    interval = setInterval(applyGravity, 1000 / fps);
+
+    function clear() {
+        clearInterval(interval);
+    }
+</script>
+<style>
+    .gravObj {
+        position: absolute;
+        border-radius: 50%;
+        border-color: #000;
+        border-width: 2px;
+        border-style: solid;
+        background-color: #202020;
+    }
+
+    .forceIndicator {
+        position: absolute;
+        top: 50px;
+        width: 20px;
+        background-color: red;
+        transform-origin: center left;
+    }
+
+    .velocityIndicator {
+        position: absolute;
+        top: 50px;
+        width: 20px;
+        background-color: green;
+        transform-origin: center left;
+    }
+</style>
+
+</html>
